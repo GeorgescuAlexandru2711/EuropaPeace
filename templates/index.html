@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Europa Peace System</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="login-screen" class="glass-panel">
+        <div class="login-box">
+            <img src="/static/logo.png" alt="Europa Peace Logo" class="logo" onerror="this.style.display='none'">
+            <h1>Europa Peace System</h1>
+            <p>Select your credentials to log in</p>
+            <input type="text" id="login-username" placeholder="Username (e.g. admin, spania)">
+            <input type="password" id="login-password" placeholder="Password (e.g. admin123, spania123)">
+            <button onclick="login()">Enter System</button>
+            <div id="login-error" style="color: var(--accent-red); margin-top: 10px; display: none;">Invalid credentials</div>
+        </div>
+    </div>
+
+    <div id="app-screen" style="display: none;">
+        <nav class="sidebar glass-panel">
+            <h2 id="user-name-display">User Name</h2>
+            <p id="user-role-display" class="role-badge">Role</p>
+            
+            <ul class="nav-links">
+                <li><a href="#" onclick="showSection('map-section')" class="active">Territory Map</a></li>
+                <li id="nav-requests"><a href="#" onclick="showSection('requests-section')">Independence Requests</a></li>
+                <li id="nav-audience"><a href="#" onclick="showSection('audience-section')">Diplomatic Audiences</a></li>
+                <li><a href="#" onclick="showSection('reports-section')">Hearing Reports</a></li>
+            </ul>
+            
+            <button class="logout-btn" onclick="logout()">Log out</button>
+        </nav>
+
+        <main class="content-area">
+            
+            <!-- Map Section -->
+            <section id="map-section" class="active-section">
+                <header class="section-header">
+                    <h2>European Territorial Map</h2>
+                </header>
+                <div id="map" class="glass-panel"></div>
+            </section>
+
+            <!-- Independence Requests Section -->
+            <section id="requests-section">
+                <header class="section-header">
+                    <h2>Independence Requests</h2>
+                    <div class="filters">
+                        <input type="text" id="req-search" placeholder="Search by name or group..." onkeyup="renderRequests()">
+                        <select id="req-category" onchange="renderRequests()">
+                            <option value="all">All Categories</option>
+                            <option value="ethnic">Ethnic</option>
+                            <option value="state-supported">State Supported</option>
+                            <option value="agreed">Agreed</option>
+                        </select>
+                    </div>
+                </header>
+                <div class="table-container glass-panel">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Request Name</th>
+                                <th>Issuing Group</th>
+                                <th>Country</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requests-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Audience Section -->
+            <section id="audience-section">
+                <header class="section-header">
+                    <h2>Diplomatic Audiences</h2>
+                </header>
+                
+                <div id="audience-request-form" class="glass-panel form-panel">
+                    <h3>Request an Audience</h3>
+                    <p>Launch a request to the Peace Council</p>
+                    <div class="form-group">
+                        <label>Protocol Specification</label>
+                        <input type="text" id="aud-protocol" placeholder="e.g. TCP/IP Secure">
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Details</label>
+                        <input type="text" id="aud-contact" placeholder="Email / Phone">
+                    </div>
+                    <button onclick="requestAudience()" class="btn-primary">Launch Request</button>
+                    <p id="aud-status" class="success-msg"></p>
+                </div>
+
+                <div id="audiences-list-panel" class="glass-panel" style="margin-top:20px; padding: 20px; display: none;">
+                    <h3>Scheduled Audiences</h3>
+                    <div id="audiences-list-content"></div>
+                </div>
+                
+                <div id="incoming-call" class="glass-panel alert-panel" style="display: none;">
+                    <h3>Incoming Diplomatic Call</h3>
+                    <p>Scheduled audience is starting now.</p>
+                    <button onclick="joinChatRoom()" class="btn-success">Accept & Join Chat</button>
+                </div>
+            </section>
+
+            <!-- Chat Room Section -->
+            <section id="chat-section">
+                <header class="section-header">
+                    <h2>Live Audience Session</h2>
+                    <span id="chat-room-id" class="badge"></span>
+                </header>
+                <div class="chat-container glass-panel">
+                    <div id="chat-messages" class="messages-area"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="Type message..." onkeypress="handleChatKey(event)">
+                        <button onclick="sendMessage()" class="btn-primary">Send</button>
+                        <button onclick="endSession()" class="btn-danger" id="end-session-btn">End Session & Report</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reports Section -->
+            <section id="reports-section">
+                <header class="section-header">
+                    <h2>Hearing Reports</h2>
+                </header>
+                <div class="reports-grid" id="reports-container">
+                    <!-- Populated by JS -->
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Generate Report Modal -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content glass-panel">
+            <h3>Generate Hearing Report</h3>
+            <textarea id="report-content" rows="6" style="width: 100%;" placeholder="Summary of the discussion..."></textarea>
+            <div style="margin-top: 10px;">
+                <label><input type="checkbox" id="report-public"> Make Public (Council Website)</label>
+            </div>
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button onclick="submitReport()" class="btn-primary">Save Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

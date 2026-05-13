@@ -1,0 +1,6 @@
+Flask
+Flask-SocketIO
+pymongo
+mongomock
+pytest
+pytest-flask
